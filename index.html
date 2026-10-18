@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نشان اقدام</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold-1: #fff3c4;
+    --gold-2: #f2c75c;
+    --gold-3: #c8901e;
+    --gold-4: #7a4a06;
+    --ink: #2b1c05;
+    /* Name slot position on the poster (image is 1672 x 941) */
+    --slot-x: 49.9%;
+    --slot-y: 68.6%;
+    --slot-w: 40%;
+    --slot-h: 15.4%;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #120b02;
+    overflow: hidden;
+    font-family: "Vazirmatn", "Geeza Pro", system-ui, sans-serif;
+  }
+
+  /* Blurred copy of the poster fills the rest of the screen */
+  .backdrop {
+    position: fixed;
+    inset: -40px;
+    background: url("background.jpeg") center / cover no-repeat;
+    filter: blur(28px) brightness(0.55) saturate(1.2);
+  }
+
+  /* The poster always fills the screen width (so it matches viewers' phones
+     when screen-shared); any extra height is cropped evenly top and bottom. */
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .poster {
+    position: relative;
+    flex: none;
+    width: 100vw;
+    aspect-ratio: 1672 / 941;
+    background: url("background.jpeg") center / cover no-repeat;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+    container-type: size;
+    user-select: none;
+  }
+
+  .slot {
+    position: absolute;
+    left: var(--slot-x);
+    top: var(--slot-y);
+    width: var(--slot-w);
+    height: var(--slot-h);
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+  }
+
+  /* ---------- Mystery question mark ---------- */
+  .mystery {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16cqw;
+    height: 16cqw;
+    transform: translate(-50%, -50%);
+    border: 0;
+    padding: 0;
+    background: none;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mystery[hidden] { display: none; }
+
+  .rays {
+    position: absolute;
+    inset: -45%;
+    border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, rgba(255, 236, 170, 0.6) 0deg 6deg, transparent 6deg 20deg);
+    mask: radial-gradient(circle, #000 12%, transparent 62%);
+    -webkit-mask: radial-gradient(circle, #000 12%, transparent 62%);
+    animation: spin 18s linear infinite;
+    pointer-events: none;
+  }
+  .halo {
+    position: absolute;
+    inset: -10%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 220, 130, 0.75) 0%, rgba(255, 196, 90, 0.35) 35%, rgba(255, 190, 80, 0) 66%);
+    animation: pulse 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .qwrap {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    animation: float 3.2s ease-in-out infinite;
+    transition: transform 0.25s ease;
+  }
+  .mystery:hover .qwrap,
+  .mystery:focus-visible .qwrap { transform: scale(1.08); }
+
+  .qmark {
+    position: relative;
+    display: grid;
+    font: 900 10.5cqw/1 "Vazirmatn", system-ui, sans-serif;
+    /* the glyph sits low in its line box; nudge it to the visual centre */
+    transform: translateY(9%);
+    filter:
+      drop-shadow(0 0 0.12cqw rgba(80, 40, 0, 0.9))
+      drop-shadow(0 0 1.4cqw rgba(255, 210, 110, 0.9))
+      drop-shadow(0 0.6cqw 0.8cqw rgba(70, 35, 0, 0.45));
+  }
+  .qmark > span { grid-area: 1 / 1; }
+  /* extruded "3D" back layer */
+  .qmark .depth {
+    color: #6e4204;
+    text-shadow:
+      0 0.12cqw 0 #663c03,
+      0 0.24cqw 0 #5c3603,
+      0 0.36cqw 0 #523002,
+      0 0.48cqw 0 #482a02;
+  }
+  /* polished gold face with a moving sheen */
+  .qmark .face {
+    background:
+      linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.95) 48%, transparent 58%) 0 0 / 300% 100% no-repeat,
+      linear-gradient(175deg, #fff6d6 0%, #ffd86b 24%, #e8a92a 48%, #b8770c 66%, #f0c45a 84%, #9a6208 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: sheen 3.2s ease-in-out infinite;
+  }
+
+  .sparkle {
+    position: absolute;
+    width: 2.4cqw;
+    height: 2.4cqw;
+    background: radial-gradient(circle, #fff 0%, #ffeaa6 45%, #f2c75c 100%);
+    clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+    opacity: 0;
+    animation: twinkle 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .sparkle:nth-of-type(1) { left: 6%;  top: 16%; animation-delay: 0s; }
+  .sparkle:nth-of-type(2) { left: 82%; top: 10%; animation-delay: 0.6s; width: 1.8cqw; height: 1.8cqw; }
+  .sparkle:nth-of-type(3) { left: 88%; top: 62%; animation-delay: 1.2s; }
+  .sparkle:nth-of-type(4) { left: 2%;  top: 70%; animation-delay: 1.8s; width: 1.6cqw; height: 1.6cqw; }
+  .sparkle:nth-of-type(5) { left: 60%; top: -6%; animation-delay: 0.9s; width: 1.4cqw; height: 1.4cqw; }
+  .sparkle:nth-of-type(6) { left: 24%; top: 88%; animation-delay: 1.5s; width: 1.4cqw; height: 1.4cqw; }
+
+  /* Reveal: wobble, then burst outward */
+  .mystery.pop { pointer-events: none; }
+  .mystery.pop .qwrap { animation: qpop 0.85s cubic-bezier(.5, 0, .75, 0) forwards; }
+  .mystery.pop .rays,
+  .mystery.pop .halo,
+  .mystery.pop .sparkle { animation: fadeOut 0.6s 0.4s forwards; }
+
+  .flash {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10cqw;
+    height: 10cqw;
+    margin: -5cqw 0 0 -5cqw;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, rgba(255, 236, 170, 0.9) 30%, rgba(255, 200, 80, 0) 70%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .flash.go { animation: flash 1.1s ease-out forwards; }
+
+  .ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10cqw;
+    height: 10cqw;
+    margin: -5cqw 0 0 -5cqw;
+    border-radius: 50%;
+    border: 0.5cqw solid rgba(255, 220, 130, 0.95);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ring.go { animation: ring 1s ease-out forwards; }
+  .ring.go.r2 { animation-delay: 0.18s; }
+
+  /* ---------- Revealed name ---------- */
+  .name {
+    position: relative;
+    max-width: 100%;
+    padding: 0 2%;
+    white-space: nowrap;
+    font-weight: 900;
+    font-size: 6cqw;
+    line-height: 1.2;
+    text-align: center;
+    background: linear-gradient(100deg, var(--gold-4) 0%, var(--gold-3) 30%, #f7d77a 45%, var(--gold-3) 60%, var(--gold-4) 100%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 0.5cqw rgba(255, 248, 225, 0.9)) drop-shadow(0 0.15cqw 0.1cqw rgba(80, 45, 0, 0.35));
+    opacity: 0;
+    visibility: hidden;
+  }
+  .name.show {
+    visibility: visible;
+    animation:
+      nameIn 1.2s cubic-bezier(.17, .89, .32, 1.28) forwards,
+      shimmer 3.5s 1.2s linear infinite;
+  }
+  .name.out {
+    visibility: visible;
+    animation: nameOut 0.4s ease-in forwards;
+  }
+
+  /* ---------- Confetti canvas ---------- */
+  #confetti {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+    transition: opacity 0.8s ease;
+  }
+
+  /* ---------- Setup panel ---------- */
+  .setup {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(18, 11, 2, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: opacity 0.4s ease;
+  }
+  .setup.hidden { opacity: 0; pointer-events: none; }
+
+  .card {
+    width: min(440px, 100%);
+    padding: 28px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(255, 248, 228, 0.97), rgba(250, 232, 190, 0.97));
+    border: 1px solid rgba(200, 144, 30, 0.6);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    color: var(--ink);
+  }
+  .card h1 { margin: 0 0 4px; font-size: 26px; font-weight: 900; color: var(--gold-4); }
+  .card p { margin: 0 0 20px; font-size: 14px; color: #6b5226; }
+  .card textarea {
+    display: block;
+    width: 100%;
+    min-height: 170px;
+    padding: 12px 16px;
+    font: 700 19px/1.7 "Vazirmatn", system-ui, sans-serif;
+    text-align: center;
+    color: var(--ink);
+    background: #fffdf6;
+    border: 2px solid #e1c27a;
+    border-radius: 12px;
+    outline: none;
+    resize: vertical;
+  }
+  .card textarea::placeholder { font-weight: 400; color: #b39a68; }
+  .card textarea:focus { border-color: var(--gold-3); box-shadow: 0 0 0 4px rgba(200, 144, 30, 0.2); }
+  .card button {
+    margin-top: 16px;
+    width: 100%;
+    padding: 14px;
+    font: 900 18px "Vazirmatn", system-ui, sans-serif;
+    color: #fff;
+    background: linear-gradient(160deg, #e2a93a, #a8700f);
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(168, 112, 15, 0.4);
+  }
+  .card button:hover { filter: brightness(1.07); }
+  .card button:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+  .card small { display: block; margin-top: 14px; font-size: 12px; line-height: 1.6; color: #8a7346; direction: ltr; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 0.7; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1.04); } }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-4%) rotate(5deg); }
+  }
+  @keyframes sheen {
+    0%, 35% { background-position: 150% 0, 0 0; }
+    100% { background-position: -50% 0, 0 0; }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1) rotate(90deg); }
+  }
+  @keyframes qpop {
+    0% { transform: scale(1) rotate(0); opacity: 1; filter: blur(0); }
+    12% { transform: scale(1.12) rotate(-14deg); }
+    26% { transform: scale(1.18) rotate(14deg); }
+    40% { transform: scale(1.24) rotate(-12deg); }
+    54% { transform: scale(1.3) rotate(10deg); }
+    68% { transform: scale(1.35) rotate(0deg); opacity: 1; filter: blur(0); }
+    100% { transform: scale(2.6) rotate(0deg); opacity: 0; filter: blur(0.8cqw); }
+  }
+  @keyframes fadeOut { to { opacity: 0; } }
+  @keyframes flash {
+    0% { opacity: 0; transform: scale(0.2); }
+    25% { opacity: 1; transform: scale(3.2); }
+    100% { opacity: 0; transform: scale(6); }
+  }
+  @keyframes ring {
+    0% { opacity: 1; transform: scale(0.3); }
+    100% { opacity: 0; transform: scale(7); }
+  }
+  @keyframes nameIn {
+    0% { opacity: 0; transform: scale(0.2) translateY(30%); filter: blur(1.2cqw) drop-shadow(0 0 0.5cqw rgba(255, 248, 225, 0.9)); }
+    60% { opacity: 1; filter: blur(0) drop-shadow(0 0 2cqw rgba(255, 240, 180, 1)); }
+    100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0) drop-shadow(0 0 0.5cqw rgba(255, 248, 225, 0.9)) drop-shadow(0 0.15cqw 0.1cqw rgba(80, 45, 0, 0.35)); }
+  }
+  @keyframes nameOut {
+    0% { opacity: 1; transform: scale(1); filter: blur(0); }
+    100% { opacity: 0; transform: scale(1.35) translateY(-20%); filter: blur(0.8cqw); }
+  }
+  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rays, .qwrap, .face, .sparkle { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="backdrop"></div>
+
+  <div class="stage">
+    <div class="poster" id="poster">
+      <div class="slot">
+        <div class="flash" id="flash"></div>
+        <div class="ring" id="ring1"></div>
+        <div class="ring r2" id="ring2"></div>
+
+        <button class="mystery" id="mystery" aria-label="Reveal the name" hidden>
+          <span class="halo"></span>
+          <span class="rays"></span>
+          <span class="sparkle"></span>
+          <span class="sparkle"></span>
+          <span class="sparkle"></span>
+          <span class="sparkle"></span>
+          <span class="sparkle"></span>
+          <span class="sparkle"></span>
+          <span class="qwrap">
+            <span class="qmark"><span class="depth">؟</span><span class="face">؟</span></span>
+          </span>
+        </button>
+
+        <div class="name" id="name" dir="auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="confetti"></canvas>
+  <audio id="cheer" src="sounds/celebration.mp3" preload="auto"></audio>
+
+  <div class="setup" id="setup">
+    <form class="card" id="setupForm" autocomplete="off">
+      <h1>نشان اقدام</h1>
+      <p>نام برنده‌ها را وارد کنید — هر نام در یک خط</p>
+      <textarea id="namesInput" dir="auto" rows="5" placeholder="نام اول&#10;نام دوم&#10;…"></textarea>
+      <button type="submit" id="readyBtn" disabled>آماده</button>
+      <small>
+        One name per line · ⌘/Ctrl+Enter = ready<br>
+        On the poster: click ؟ or Enter → reveal · Enter → next name<br>
+        Esc → back to this screen · F → fullscreen
+      </small>
+    </form>
+  </div>
+
+<script>
+(() => {
+  const setup = document.getElementById("setup");
+  const form = document.getElementById("setupForm");
+  const input = document.getElementById("namesInput");
+  const readyBtn = document.getElementById("readyBtn");
+  const mystery = document.getElementById("mystery");
+  const nameEl = document.getElementById("name");
+  const flash = document.getElementById("flash");
+  const rings = [document.getElementById("ring1"), document.getElementById("ring2")];
+
+  const STORAGE_KEY = "name-reveal:names";
+  const CELEBRATION_MS = 5000;
+
+  let names = [];
+  let index = -1;  // index of the name currently on screen, -1 = question mark
+  let busy = false; // true while a reveal transition is running
+
+  const parseNames = (text) => text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+
+  function updateReadyButton() {
+    const count = parseNames(input.value).length;
+    readyBtn.disabled = count === 0;
+    readyBtn.textContent = count > 1 ? `آماده (${count.toLocaleString("fa-IR")} نام)` : "آماده";
+  }
+
+  try { input.value = localStorage.getItem(STORAGE_KEY) || ""; } catch (_) {}
+  updateReadyButton();
+  input.focus();
+
+  input.addEventListener("input", updateReadyButton);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const list = parseNames(input.value);
+    if (!list.length) return;
+    try { localStorage.setItem(STORAGE_KEY, list.join("\n")); } catch (_) {}
+    prepare(list);
+  });
+
+  function prepare(list) {
+    names = list;
+    index = -1;
+    busy = false;
+    confetti.stop(true);
+    sound.stop();
+    nameEl.textContent = "";
+    nameEl.className = "name";
+    mystery.className = "mystery";
+    mystery.hidden = false;
+    flash.classList.remove("go");
+    rings.forEach((r) => r.classList.remove("go"));
+    setup.classList.add("hidden");
+    input.blur();
+  }
+
+  // Shrink the font until the name fits inside the slot. Long names that
+  // would get too small on one line wrap onto two lines instead.
+  function fitName() {
+    const slot = nameEl.parentElement;
+    const overflows = () => nameEl.scrollWidth > slot.clientWidth || nameEl.offsetHeight > slot.clientHeight;
+    const shrink = (size, min) => {
+      nameEl.style.fontSize = size + "cqw";
+      while (overflows() && size > min) {
+        size -= 0.1;
+        nameEl.style.fontSize = size + "cqw";
+      }
+      return size;
+    };
+
+    nameEl.style.whiteSpace = "nowrap";
+    if (shrink(6.5, 3.6) > 3.6 || !overflows()) return;
+
+    nameEl.style.whiteSpace = "normal";
+    shrink(3.8, 2);
+  }
+
+  // Re-trigger a CSS animation class on an element.
+  function restart(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function celebrate(name) {
+    nameEl.className = "name";
+    nameEl.textContent = name;
+    fitName();
+    restart(nameEl, "show");
+    restart(flash, "go");
+    rings.forEach((r) => restart(r, "go"));
+
+    const rect = nameEl.parentElement.getBoundingClientRect();
+    confetti.start(rect.left + rect.width / 2, rect.top + rect.height / 2, CELEBRATION_MS);
+    sound.play(CELEBRATION_MS);
+    setTimeout(() => { busy = false; }, 900);
+  }
+
+  // Show the next name: the first one comes out of the question mark,
+  // later ones replace the current name. Does nothing after the last name.
+  function next() {
+    if (busy || index + 1 >= names.length) return;
+    busy = true;
+    index += 1;
+    const name = names[index];
+
+    if (index === 0) {
+      mystery.classList.add("pop");
+      setTimeout(() => celebrate(name), 600);
+      setTimeout(() => { mystery.hidden = true; }, 900);
+    } else {
+      nameEl.classList.remove("show");
+      nameEl.classList.add("out");
+      setTimeout(() => celebrate(name), 380);
+    }
+  }
+
+  mystery.addEventListener("click", next);
+
+  window.addEventListener("resize", () => { if (nameEl.textContent) fitName(); });
+
+  document.addEventListener("keydown", (e) => {
+    if (!setup.classList.contains("hidden")) return;
+    if (e.key === "Escape") {
+      confetti.stop(true);
+      sound.stop();
+      setup.classList.remove("hidden");
+      input.focus();
+    } else if (e.key === "f" || e.key === "F") {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen?.();
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      next();
+    }
+  });
+
+  /* ---------------- Celebration sound ---------------- */
+  const sound = (() => {
+    const audio = document.getElementById("cheer");
+    let timers = [];
+    let fade = 0;
+
+    function clear() {
+      timers.forEach(clearTimeout);
+      timers = [];
+      clearInterval(fade);
+    }
+
+    function play(duration) {
+      clear();
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 1;
+      audio.play().catch(() => {});
+      // fade out over the last second so it ends with the confetti
+      timers.push(setTimeout(() => {
+        fade = setInterval(() => {
+          audio.volume = Math.max(0, audio.volume - 0.05);
+          if (audio.volume === 0) clearInterval(fade);
+        }, 50);
+      }, duration - 1000));
+      timers.push(setTimeout(stop, duration));
+    }
+
+    function stop() {
+      clear();
+      audio.pause();
+      audio.currentTime = 0;
+    }
+
+    return { play, stop };
+  })();
+
+  /* ---------------- Celebration (confetti + fireworks) ---------------- */
+  const confetti = (() => {
+    const canvas = document.getElementById("confetti");
+    const ctx = canvas.getContext("2d");
+    const COLORS = ["#f7d77a", "#e2a93a", "#fff3c4", "#e2433a", "#4fb3e8", "#6fd17a", "#c86bf0", "#ffffff", "#ff8fb1"];
+    let particles = [];
+    let raf = 0;
+    let running = false;
+    let timers = [];
+    let w = 0, h = 0, dpr = 1;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+    const scale = () => Math.max(0.6, Math.min(w, h) / 800);
+
+    function confettiPiece(x, y, angle, speed) {
+      const s = scale();
+      particles.push({
+        kind: "confetti",
+        x, y,
+        vx: Math.cos(angle) * speed * s,
+        vy: Math.sin(angle) * speed * s,
+        size: rand(7, 13) * s,
+        color: pick(COLORS),
+        shape: Math.random() < 0.7 ? "rect" : "circle",
+        rot: rand(0, Math.PI * 2),
+        vr: rand(-0.25, 0.25),
+        flip: rand(0, Math.PI * 2),
+        vflip: rand(0.08, 0.2),
+        drag: rand(0.965, 0.985),
+        gravity: 0.32 * s,
+        life: 1,
+        decay: 0,
+      });
+    }
+
+    function spark(x, y, angle, speed, color) {
+      const s = scale();
+      particles.push({
+        kind: "spark",
+        x, y, px: x, py: y,
+        vx: Math.cos(angle) * speed * s,
+        vy: Math.sin(angle) * speed * s,
+        size: rand(1.8, 3) * s,
+        color,
+        drag: 0.955,
+        gravity: 0.09 * s,
+        life: 1,
+        decay: rand(0.012, 0.022),
+      });
+    }
+
+    function burst(x, y, count) {
+      for (let i = 0; i < count; i++) {
+        confettiPiece(x, y, rand(0, Math.PI * 2), rand(6, 22));
+      }
+    }
+
+    function cannon(side) {
+      const x = side === "left" ? -10 : w + 10;
+      const base = side === "left" ? -Math.PI / 3 : -Math.PI * 2 / 3;
+      for (let i = 0; i < 28; i++) {
+        confettiPiece(x, h * 0.95, base + rand(-0.35, 0.35), rand(18, 32));
+      }
+    }
+
+    function firework() {
+      const x = rand(w * 0.12, w * 0.88);
+      const y = rand(h * 0.08, h * 0.45);
+      const color = pick(COLORS);
+      const color2 = pick(COLORS);
+      const n = 70;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + rand(-0.05, 0.05);
+        spark(x, y, a, rand(4, 9), i % 3 === 0 ? color2 : color);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.vx *= p.drag;
+        p.vy = p.vy * p.drag + p.gravity;
+        if (p.kind === "spark") { p.px = p.x; p.py = p.y; }
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y > h + 40 || p.x < -60 || p.x > w + 60) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        if (p.kind === "confetti") {
+          // gentle flutter once falling
+          if (p.vy > 0) p.vx += Math.sin(p.flip) * 0.15;
+          p.rot += p.vr;
+          p.flip += p.vflip;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.scale(1, Math.cos(p.flip));
+          ctx.fillStyle = p.color;
+          if (p.shape === "rect") ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+          else { ctx.beginPath(); ctx.arc(0, 0, p.size / 3, 0, Math.PI * 2); ctx.fill(); }
+          ctx.restore();
+        } else {
+          ctx.globalAlpha = Math.max(p.life, 0);
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = p.size;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(p.px - p.vx * 2, p.py - p.vy * 2);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      if (running || particles.length) raf = requestAnimationFrame(draw);
+      else ctx.clearRect(0, 0, w, h);
+    }
+
+    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+    function start(x, y, duration) {
+      stop(true);
+      canvas.style.transition = "none";
+      canvas.style.opacity = "1";
+      running = true;
+
+      burst(x, y, 180);
+      later(() => { cannon("left"); cannon("right"); }, 150);
+
+      // keep the party going until ~1.2s before the end, then fade out
+      const spawnUntil = duration - 1200;
+      for (let t = 400; t < spawnUntil; t += 450) {
+        later(() => { cannon(Math.random() < 0.5 ? "left" : "right"); }, t);
+      }
+      for (let t = 300; t < spawnUntil; t += 380) {
+        later(firework, t + rand(0, 200));
+      }
+      for (let t = 900; t < spawnUntil; t += 1100) {
+        later(() => burst(rand(w * 0.2, w * 0.8), -20, 40), t);
+      }
+
+      later(() => {
+        canvas.style.transition = "opacity 0.8s ease";
+        canvas.style.opacity = "0";
+      }, duration - 800);
+      later(() => stop(true), duration);
+
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(draw);
+    }
+
+    function stop(clear) {
+      running = false;
+      timers.forEach(clearTimeout);
+      timers = [];
+      if (clear) {
+        particles = [];
+        cancelAnimationFrame(raf);
+        ctx.clearRect(0, 0, w, h);
+      }
+    }
+
+    return { start, stop };
+  })();
+})();
+</script>
+</body>
+</html>
