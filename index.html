@@ -244,6 +244,36 @@
     transition: opacity 0.8s ease;
   }
 
+  /* ---------- Previous / next arrows ---------- */
+  .nav {
+    position: fixed;
+    bottom: clamp(16px, 3vw, 36px);
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    width: clamp(48px, 5vw, 76px);
+    height: clamp(48px, 5vw, 76px);
+    padding: 0;
+    border: 1px solid rgba(255, 236, 170, 0.75);
+    border-radius: 50%;
+    color: var(--ink);
+    background: linear-gradient(160deg, var(--gold-1) 0%, var(--gold-2) 40%, var(--gold-3) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      0 0 18px rgba(255, 210, 110, 0.45),
+      0 8px 20px rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.2s ease, filter 0.2s ease, opacity 0.3s ease;
+  }
+  .nav svg { width: 46%; height: 46%; }
+  .nav.prev { left: clamp(16px, 3vw, 36px); }
+  .nav.next { right: clamp(16px, 3vw, 36px); }
+  .nav:hover, .nav:focus-visible { transform: scale(1.08); filter: brightness(1.08); }
+  .nav:active { transform: scale(0.95); }
+  .nav:disabled { opacity: 0.3; cursor: default; transform: none; filter: grayscale(0.4); }
+
   /* ---------- Setup panel ---------- */
   .setup {
     position: fixed;
@@ -381,6 +411,13 @@
     </div>
   </div>
 
+  <button class="nav prev" id="prevBtn" aria-label="Previous" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <button class="nav next" id="nextBtn" aria-label="Next">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+  </button>
+
   <canvas id="confetti"></canvas>
   <audio id="cheer" src="sounds/celebration.mp3" preload="auto"></audio>
 
@@ -393,6 +430,7 @@
       <small>
         One name per line · ⌘/Ctrl+Enter = ready<br>
         On the poster: click ؟ or Enter → reveal · Enter → next name<br>
+        → arrow = next · ← arrow = previous<br>
         Esc → back to this screen · F → fullscreen
       </small>
     </form>
@@ -408,6 +446,8 @@
   const nameEl = document.getElementById("name");
   const flash = document.getElementById("flash");
   const rings = [document.getElementById("ring1"), document.getElementById("ring2")];
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
 
   const STORAGE_KEY = "name-reveal:names";
   const CELEBRATION_MS = 5000;
@@ -450,14 +490,25 @@
     busy = false;
     confetti.stop(true);
     sound.stop();
+    showMystery();
+    setup.classList.add("hidden");
+    input.blur();
+  }
+
+  // Back to the initial question-mark state.
+  function showMystery() {
     nameEl.textContent = "";
     nameEl.className = "name";
     mystery.className = "mystery";
     mystery.hidden = false;
     flash.classList.remove("go");
     rings.forEach((r) => r.classList.remove("go"));
-    setup.classList.add("hidden");
-    input.blur();
+    updateNav();
+  }
+
+  function updateNav() {
+    prevBtn.disabled = index < 0;
+    nextBtn.disabled = index + 1 >= names.length;
   }
 
   // Shrink the font until the name fits inside the slot. Long names that
@@ -488,11 +539,15 @@
     el.classList.add(cls);
   }
 
-  function celebrate(name) {
+  function showName(name) {
     nameEl.className = "name";
     nameEl.textContent = name;
     fitName();
     restart(nameEl, "show");
+  }
+
+  function celebrate(name) {
+    showName(name);
     restart(flash, "go");
     rings.forEach((r) => restart(r, "go"));
 
@@ -508,6 +563,7 @@
     if (busy || index + 1 >= names.length) return;
     busy = true;
     index += 1;
+    updateNav();
     const name = names[index];
 
     if (index === 0) {
@@ -521,7 +577,28 @@
     }
   }
 
+  // Step back: show the previous name quietly (no confetti or sound),
+  // or return to the question mark from the first name.
+  function prev() {
+    if (busy || index < 0) return;
+    busy = true;
+    index -= 1;
+    updateNav();
+    confetti.stop(true);
+    sound.stop();
+    nameEl.classList.remove("show");
+    nameEl.classList.add("out");
+    setTimeout(() => {
+      if (index < 0) showMystery();
+      else showName(names[index]);
+      busy = false;
+    }, 380);
+  }
+
   mystery.addEventListener("click", next);
+  // blur after clicking so a later Enter/Space doesn't also "press" the button
+  nextBtn.addEventListener("click", () => { nextBtn.blur(); next(); });
+  prevBtn.addEventListener("click", () => { prevBtn.blur(); prev(); });
 
   window.addEventListener("resize", () => { if (nameEl.textContent) fitName(); });
 
@@ -535,9 +612,12 @@
     } else if (e.key === "f" || e.key === "F") {
       if (document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen?.();
-    } else if (e.key === "Enter" || e.key === " ") {
+    } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") {
       e.preventDefault();
       next();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      prev();
     }
   });
 
