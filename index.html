@@ -2,7 +2,8 @@
 <html lang="fa">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120b02">
 <title>نشان اقدام</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -246,13 +247,15 @@
 
   /* ---------- Previous / next arrows ---------- */
   .nav {
+    --nav-size: clamp(48px, 5vw, 76px);
+    --nav-edge: clamp(16px, 3vw, 36px);
     position: fixed;
-    bottom: clamp(16px, 3vw, 36px);
+    bottom: var(--nav-edge);
     z-index: 6;
     display: grid;
     place-items: center;
-    width: clamp(48px, 5vw, 76px);
-    height: clamp(48px, 5vw, 76px);
+    width: var(--nav-size);
+    height: var(--nav-size);
     padding: 0;
     border: 1px solid rgba(255, 236, 170, 0.75);
     border-radius: 50%;
@@ -268,9 +271,12 @@
     transition: transform 0.2s ease, filter 0.2s ease, opacity 0.3s ease;
   }
   .nav svg { width: 46%; height: 46%; }
-  .nav.prev { left: clamp(16px, 3vw, 36px); }
-  .nav.next { right: clamp(16px, 3vw, 36px); }
-  .nav:hover, .nav:focus-visible { transform: scale(1.08); filter: brightness(1.08); }
+  .nav.prev { left: var(--nav-edge); }
+  .nav.next { right: var(--nav-edge); }
+  /* Reset sits just to the right of the back arrow */
+  .nav.reset { left: calc(var(--nav-edge) + var(--nav-size) + clamp(10px, 1.5vw, 18px)); }
+  .nav:focus-visible { transform: scale(1.08); filter: brightness(1.08); }
+  @media (hover: hover) { .nav:hover { transform: scale(1.08); filter: brightness(1.08); } }
   .nav:active { transform: scale(0.95); }
   .nav:disabled { opacity: 0.3; cursor: default; transform: none; filter: grayscale(0.4); }
 
@@ -332,6 +338,43 @@
   .card button:hover { filter: brightness(1.07); }
   .card button:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
   .card small { display: block; margin-top: 14px; font-size: 12px; line-height: 1.6; color: #8a7346; direction: ltr; }
+  /* keyboard shortcuts mean nothing on a touch screen */
+  @media (hover: none) and (pointer: coarse) { .card small { display: none; } }
+
+  /* ================= Phone layout (portrait screens) =================
+     Uses a portrait version of the poster that fills the screen height; the
+     sides are cropped evenly on narrow phones. Only the image, its aspect
+     ratio and the name slot position change. */
+  @media (max-aspect-ratio: 1/1) {
+    :root {
+      /* Name slot position on the portrait poster (image is 853 x 1280) */
+      --slot-x: 50.1%;
+      --slot-y: 53.9%;
+      --slot-w: 42%;
+      --slot-h: 6.6%;
+    }
+
+    .backdrop { background-image: url("background-mobile.jpeg"); }
+
+    .poster {
+      width: max(100vw, calc(100dvh * 853 / 1280));
+      aspect-ratio: 853 / 1280;
+      background-image: url("background-mobile.jpeg");
+      box-shadow: none;
+    }
+
+    .nav {
+      --nav-size: 60px;
+      bottom: max(20px, env(safe-area-inset-bottom));
+    }
+    .nav.prev { left: max(20px, env(safe-area-inset-left)); }
+    .nav.next { right: max(20px, env(safe-area-inset-right)); }
+    .nav.reset { left: calc(max(20px, env(safe-area-inset-left)) + var(--nav-size) + 12px); }
+
+
+    .card { padding: 24px 20px; }
+    .card textarea { min-height: 38vh; }
+  }
 
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 0.7; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1.04); } }
@@ -414,9 +457,13 @@
   <button class="nav prev" id="prevBtn" aria-label="Previous" disabled>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
   </button>
+  <button class="nav reset" id="resetBtn" aria-label="Reset">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3"/><path d="M3.5 4v5h5"/></svg>
+  </button>
   <button class="nav next" id="nextBtn" aria-label="Next">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
   </button>
+
 
   <canvas id="confetti"></canvas>
   <audio id="cheer" src="sounds/celebration.mp3" preload="auto"></audio>
@@ -602,13 +649,19 @@
 
   window.addEventListener("resize", () => { if (nameEl.textContent) fitName(); });
 
+  function openSetup() {
+    confetti.stop(true);
+    sound.stop();
+    setup.classList.remove("hidden");
+    input.focus();
+  }
+  const resetBtn = document.getElementById("resetBtn");
+  resetBtn.addEventListener("click", () => { resetBtn.blur(); openSetup(); });
+
   document.addEventListener("keydown", (e) => {
     if (!setup.classList.contains("hidden")) return;
     if (e.key === "Escape") {
-      confetti.stop(true);
-      sound.stop();
-      setup.classList.remove("hidden");
-      input.focus();
+      openSetup();
     } else if (e.key === "f" || e.key === "F") {
       if (document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen?.();
